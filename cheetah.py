@@ -8,16 +8,16 @@ class CustomCheetahRewardWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
     def step(self, action):
-        # 1. Let the base environment run the step
+        # Let the base environment run the step
         obs, base_reward, terminated, truncated, info = self.env.step(action)
         anfronTip = obs[1] #angle of the front tip
 
-        # 2. Calculate the custom reward
+        # Calculate the custom reward
         torso_z = obs[0]
 
-# Penalize sinking into the floor / dragging chest
+        # Penalize sinking into the floor / dragging chest
         height_penalty = 0.0
-        if torso_z < -0.15:  # Adjust threshold based on your obs inspection
+        if torso_z < -0.15:  
             height_penalty = -5.0 * ((-0.15 - torso_z) ** 2)
 
         tilt = max(0.0, abs(anfronTip) - 0.5 )
@@ -39,25 +39,30 @@ class CustomCheetahRewardWrapper(gym.Wrapper):
 env = gym.make("HalfCheetah-v5")
 env = CustomCheetahRewardWrapper(env)
 
-
+#setup the model algorithm
 model = SAC(
     "MlpPolicy",
     env,
     learning_rate=3e-4,
-    buffer_size=200_000,        # Fits in RAM easily
-    batch_size=128,             # Cache-friendly batch size for CPU
-    train_freq=(64, "step"),    # Collect 64 steps in C++ physics...
-    gradient_steps=64,          # ...then run 64 updates at once
-    learning_starts=5_000,      # Start updating sooner
+    buffer_size=200_000,        
+    batch_size=128,             
+    train_freq=(64, "step"),   
+    gradient_steps=64,         
+    learning_starts=5_000,
     device="cpu",
     verbose=1,
 )
+
+#Start the training
 
 print("Starting training...")
 model.learn(total_timesteps=200_000)
 print("Training completed.")
 
+#Save the model to see it whenever you want
 model.save("SAC_HalfCheetah_CustomReward")
+
+#to see the actual result of the training
 
 test_env = gym.make("HalfCheetah-v5", render_mode="human")
 test_env = CustomCheetahRewardWrapper(test_env)
@@ -74,7 +79,6 @@ for ep in range(5):
         ep_reward += reward
         done = terminated or truncated
 
-        # ~30 FPS visual pacing
         time.sleep(0.03)
 
     print(f"Episode {ep + 1} finished! (Reward: {ep_reward:.1f})")
